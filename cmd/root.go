@@ -43,9 +43,9 @@ var rootCmd = &cobra.Command{
 			return
 		}
 		for _, v := range tables {
-			f, err := os.Create("hgen/" + v + "_dao.go")
-			f.WriteString(`package hgen
-			`)
+			os.MkdirAll("dao/"+tags+"d", 0777)
+			daofilepath := "dao/" + tags + "d/" + v + ".go"
+			f, err := os.Create(daofilepath)
 			if err != nil {
 				fmt.Println(err)
 				return
@@ -54,43 +54,43 @@ var rootCmd = &cobra.Command{
 			if err != nil {
 				fmt.Println(err)
 				f.Close()
-				os.Remove("hgen/" + v + "_dao.go")
+				os.Remove(daofilepath)
 				return
 			}
 			_, err = f.WriteString(daostring)
 			if err != nil {
 				fmt.Println(err)
 				f.Close()
-				os.Remove("hgen/" + v + "_dao.go")
+				os.Remove(daofilepath)
 				return
 			}
 			err = f.Sync()
 			if err != nil {
 				fmt.Println(err)
 				f.Close()
-				os.Remove("hgen/" + v + "_dao.go")
+				os.Remove(daostring)
 				return
 			}
-			f2, err := os.Create("hgen/" + v + "_api.go")
+			os.MkdirAll("api/"+tags+"/", 0777)
+			apifilepath := "api/" + tags + "/" + v + ".go"
+			f2, err := os.Create(apifilepath)
 			if err != nil {
 				fmt.Println(err)
 				return
 			}
-			f2.WriteString(`package hgen
-			`)
 			apistring := generateapi(v)
 			_, err = f2.WriteString(apistring)
 			if err != nil {
 				fmt.Println(err)
 				f2.Close()
-				os.Remove("hgen/" + v + "_api.go")
+				os.Remove(apifilepath)
 				return
 			}
 			err = f2.Sync()
 			if err != nil {
 				fmt.Println(err)
 				f2.Close()
-				os.Remove("hgen/" + v + "_api.go")
+				os.Remove(apifilepath)
 				return
 			}
 		}

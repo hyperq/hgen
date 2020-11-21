@@ -63,7 +63,8 @@ func generateStruct(table string) (creates string, err error) {
 		}
 		columns = append(columns, fs)
 	}
-	creates = fmt.Sprintf("// {{UpperTableName}} %s struct\ntype {{UpperTableName}} struct{\n%s\n}", table, strings.Join(columns, "\n"))
+	creates = "package " + tags + "d\n"
+	creates += fmt.Sprintf("// {{UpperTableName}} %s struct\ntype {{UpperTableName}} struct{\n%s\n}", table, strings.Join(columns, "\n"))
 	return
 }
 
@@ -73,18 +74,13 @@ const daotemplate = `
 		return "{{TableName}}"
 	}
 	
-	const {{TableName}}sql=` + "`" + `
+	const {{UpperTableName}}sql=` + "`" + `
 			SELECT a.* 
 			FROM {{TableName}} a ` + "`" + `
 
 	// {{UpperTableName}}s get {{TableName}} list
 	func {{UpperTableName}}s(q *qs.QuerySet) (data []{{UpperTableName}}, err error) {
-		wh, params, others := q.Format()
-		rows, err := Query({{TableName}}sql+wh+others, params...)
-		if err != nil {
-			return
-		}
-		err = scanner.ScanClose(rows, &data)
+		err = dao.QueryByQs({{UpperTableName}}sql, q,&data)
 		return
 	}
 	// {{UpperTableName}}o get {{TableName}}
@@ -95,7 +91,7 @@ const daotemplate = `
 			return
 		}
 		if len(datas) == 0 {
-			err = NotFound
+			err = dao.NotFound
 			return
 		}
 		data = datas[0]
@@ -110,9 +106,9 @@ const daotemplate = `
 	// {{UpperTableName}}sCache
 	func {{UpperTableName}}sCache(q *qs.QuerySet) (data []{{UpperTableName}}, err error) {
 		cachekey := q.FormatCache("{{TableName}}l")
-		res, err := {{UpperModuleName}}Cache.Get(cachekey, q)
+		res, err := dao.{{UpperModuleName}}Cache.Get(cachekey, q)
 		if err != nil {
-			res, err = {{UpperModuleName}}Cache.Add(cachekey, DefaultCacheExpire, func(q *qs.QuerySet) (res string, err error) {
+			res, err = dao.{{UpperModuleName}}Cache.Add(cachekey, dao.DefaultCacheExpire, func(q *qs.QuerySet) (res string, err error) {
 				data, err := {{UpperTableName}}s(q)
 				if err != nil {
 					return
@@ -132,9 +128,9 @@ const daotemplate = `
 		q := qs.New()
 		q.Add("a.id=?", id)
 		cachekey := "{{TableName}}d" + fmt.Sprint(id)
-		res, err := {{UpperModuleName}}Cache.Get(cachekey, q)
+		res, err := dao.{{UpperModuleName}}Cache.Get(cachekey, q)
 		if err != nil {
-			res, err = {{UpperModuleName}}Cache.Add(cachekey, DefaultCacheExpire, func(q *qs.QuerySet) (res string, err error) {
+			res, err = dao.{{UpperModuleName}}Cache.Add(cachekey, dao.DefaultCacheExpire, func(q *qs.QuerySet) (res string, err error) {
 				data, err := {{UpperTableName}}o(q)
 				if err != nil {
 					return
@@ -152,10 +148,10 @@ const daotemplate = `
 	// {{UpperTableName}}Count count ad number by cache
 	func {{UpperTableName}}Count(q *qs.QuerySet) int {
 		countkey := q.FormatCache("{{TableName}}c")
-		counts, err := {{UpperModuleName}}Cache.Get(countkey, q)
+		counts, err := dao.{{UpperModuleName}}Cache.Get(countkey, q)
 		if err != nil {
-			counts, err = {{UpperModuleName}}Cache.Add(countkey, DefaultCacheExpire, func(q *qs.QuerySet) (data string, err error) {
-				data = strconv.Itoa(Count("{{TableName}}", q))
+			counts, err = dao.{{UpperModuleName}}Cache.Add(countkey, dao.DefaultCacheExpire, func(q *qs.QuerySet) (data string, err error) {
+				data = strconv.Itoa(dao.Count("{{TableName}}", q))
 				return
 			}, q)
 			if err != nil {
@@ -178,21 +174,21 @@ func generateget() string {
 	// @Accept  json
 	// @Produce  json
 	// @Param id query string true "{{TableName}} id"
-	// @Success 200 {object} dao.{{UpperTableName}}
+	// @Success 200 {object} {{ModuleName}}d.{{UpperTableName}}
 	// @Failure 400 {object} ctx.R
-	// @Router /api/{{ModuleName}}/{{TableName}} [get]
+	// @Router /api/v1/{{ModuleName}}/{{TableName}} [get]
 	`
 	}
 	rs += `
 		// {{UpperTableName}}
-		func (u *{{UpperModuleName}}) {{UpperTableName}}(c *ctx.Context) {`
+		func (u *{{UpModuleName}}) {{UpperTableName}}(c *ctx.Context) {`
 	if cache {
 		rs += `	
-			data, err := dao.{{UpperTableName}}ByIdCache(c.Query("id"))
+			data, err := {{ModuleName}}d.{{UpperTableName}}ByIdCache(c.Query("id"))
 	`
 	} else {
 		rs += `	
-			data, err := dao.{{UpperTableName}}ById(c.Query("id"))
+			data, err := {{ModuleName}}d.{{UpperTableName}}ById(c.Query("id"))
 	`
 	}
 	rs += `if c.HandlerError(err) {
@@ -212,34 +208,33 @@ func generategets() string {
 	// @Description 获取{{TableName}}列表
 	// @Accept  json
 	// @Produce  json
-	// @Success 200 {array} dao.{{UpperTableName}}
+	// @Success 200 {array} {{ModuleName}}d.{{UpperTableName}}
 	// @Failure 400 {object} ctx.R
-	// @Router /api/{{ModuleName}}/{{TableName}}s [get]
+	// @Router /api/v1/{{ModuleName}}/{{TableName}}s [get]
 `
 	}
 	rs += `
 	// {{UpperTableName}}s
-	func (u *{{UpperModuleName}}) {{UpperTableName}}s(c *ctx.Context) {
-		q := qs.New()  
-		c.PageHandle(q)
-		c.QuerySetArray(q, []string{})
-		c.QuerySetLikeArray(q, []string{})
+	func (u *{{UpModuleName}}) {{UpperTableName}}s(c *ctx.Context) {
+		q := qs.New().Paging(c)
+		q.SetArray(c)
+		q.SetLikeArray(c)
 `
 	if cache {
 		rs += `
-		data, err := dao.{{UpperTableName}}sCache(q)
+		data, err := {{ModuleName}}d.{{UpperTableName}}sCache(q)
 		if c.HandlerError(err) {
 			return
 		}
-		c.JSON(200, gin.H{"data": data, "totalCount": dao.{{UpperTableName}}Count(q)})
+		c.JSON(200, gin.H{"data": data, "totalCount": {{ModuleName}}d.{{UpperTableName}}Count(q)})
 	}`
 	} else {
 		rs += `
-		data, err := dao.{{UpperTableName}}s(q)
+		data, err := {{ModuleName}}d.{{UpperTableName}}s(q)
 		if c.HandlerError(err) {
 			return
 		}
-		c.JSON(200, gin.H{"data": data, "totalCount": dao.Count("{{TableName}}", q)})
+		c.JSON(200, gin.H{"data": data, "totalCount": {{ModuleName}}d.Count("{{TableName}}", q)})
 	}`
 	}
 	return rs
@@ -255,26 +250,26 @@ func generatesave() string {
 	// @Description 添加或更新{{TableName}}
 	// @Accept  x-www-form-urlencoded
 	// @Produce  json
-	// @Param document body dao.{{UpperTableName}} true "{{TableName}}信息"
+	// @Param document body {{ModuleName}}d.{{UpperTableName}} true "{{TableName}}信息"
 	// @Success 200 {array} ctx.R "结果"
-	// @Router /api/{{ModuleName}}/{{TableName}} [post]
+	// @Router /api/v1/{{ModuleName}}/{{TableName}} [post]
 	`
 	}
 	rs += `
 	// {{UpperTableName}}
-	func (u *{{UpperModuleName}}) {{UpperTableName}}Save(c *ctx.Context) {
+	func (u *{{UpModuleName}}) {{UpperTableName}}Save(c *ctx.Context) {
 		// 获取用户id
 		userid := c.GetUID()
-		var pd dao.{{UpperTableName}}
+		var pd {{ModuleName}}d.{{UpperTableName}}
 		data := c.PostForm("data")
 		err := jsoniter.Unmarshal([]byte(data), &pd)
 		if c.HandlerError(err) {
 			return
 		}
 		// 获取原来的数据
-		var opd dao.{{UpperTableName}}
+		var opd {{ModuleName}}d.{{UpperTableName}}
 		if pd.Id != 0 {
-			opd, err = dao.{{UpperTableName}}ById(pd.Id)
+			opd, err = {{ModuleName}}d.{{UpperTableName}}ById(pd.Id)
 			if err != nil {
 				log.Error(err)
 			}
@@ -291,7 +286,7 @@ func generatesave() string {
 		}
 		pd.Id = int(id)
 		// 写入操作记录
-		_ = srv.InsertOperateRecordSimple(opd, pd, userid)
+		_ = admins.InsertOperateRecordSimple(opd, pd, userid)
 	`
 	if cache {
 		rs += `
@@ -323,7 +318,7 @@ func generatedelete() string {
 	}
 	rs += `
 	// {{UpperTableName}}
-	func (u *{{UpperModuleName}}) {{UpperTableName}}Delete(c *ctx.Context) {
+	func (u *{{UpModuleName}}) {{UpperTableName}}Delete(c *ctx.Context) {
 		id:=c.Query("id")
 		_, err := dao.Exec("UPDATE {{TableName}} SET is_delete = 1,modify_time = ?,version = version + 1 WHERE id = ? AND version = ?", tool.GetNows(), id, c.Query("version"))
 		if c.HandlerError(err) {
@@ -338,7 +333,7 @@ func generatedelete() string {
 		`
 	}
 	rs += `
-	_ = srv.InsertOperateRecord(2, c.GetAdminId(), {{TableName}}, id, "")
+	_ = admins.InsertOperateRecord(2, c.GetAdminId(), "{{TableName}}", id, "")
 	c.JSON(200, ctx.R{Status: 1, Data: id})
 	}
 	`
@@ -366,7 +361,8 @@ func generatedao(tablename string) (rs string, err error) {
 }
 
 func generateapi(tablename string) (rs string) {
-	rs = generateget()
+	rs = "package " + tags + "\n"
+	rs += generateget()
 	rs += generategets()
 	rs += generatesave()
 	rs += generatedelete()
@@ -380,5 +376,6 @@ func replace(rs, tablename string) string {
 	rs = strings.Replace(rs, "{{UpperModuleName}}", upperModuleName, -1)
 	rs = strings.Replace(rs, "{{TableName}}", tablename, -1)
 	rs = strings.Replace(rs, "{{UpperTableName}}", upperTableName, -1)
+	rs = strings.Replace(rs, "{{UpModuleName}}", strings.ToUpper(tags), -1)
 	return rs
 }
