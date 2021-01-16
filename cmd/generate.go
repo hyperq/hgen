@@ -76,7 +76,8 @@ const daotemplate = `
 	
 	const {{UpperTableName}}sql=` + "`" + `
 			SELECT a.* 
-			FROM {{TableName}} a ` + "`" + `
+			FROM {{TableName}} a 
+` + "`" + `
 
 	// {{UpperTableName}}s get {{TableName}} list
 	func {{UpperTableName}}s(q *qs.QuerySet) (data []{{UpperTableName}}, err error) {
@@ -164,10 +165,9 @@ const daotemplate = `
 `
 
 func generateget() string {
-	rs := ""
+	rs := "// {{UpperTableName}}"
 	if comment {
 		rs += `
-	// {{UpperTableName}}
 	// @tags {{ModuleName}}
 	// @Summary 根据id获取{{TableName}}信息
 	// @Description 根据id获取{{TableName}}信息
@@ -176,11 +176,9 @@ func generateget() string {
 	// @Param id query string true "{{TableName}} id"
 	// @Success 200 {object} {{ModuleName}}d.{{UpperTableName}}
 	// @Failure 400 {object} ctx.R
-	// @Router /api/v1/{{ModuleName}}/{{TableName}} [get]
-	`
+	// @Router /api/v1/{{ModuleName}}/{{TableName}} [get]`
 	}
 	rs += `
-		// {{UpperTableName}}
 		func (u *{{UpModuleName}}) {{UpperTableName}}(c *ctx.Context) {`
 	if cache {
 		rs += `	
@@ -195,14 +193,14 @@ func generateget() string {
 				return
 			}
 			c.JSON(200, data)
-		}`
+		}
+`
 	return rs
 }
 func generategets() string {
-	rs := ""
+	rs := "// {{UpperTableName}}s"
 	if comment {
 		rs += `
-	// {{UpperTableName}}s
 	// @tags {{ModuleName}}
 	// @Summary 获取{{TableName}}列表
 	// @Description 获取{{TableName}}列表
@@ -210,11 +208,9 @@ func generategets() string {
 	// @Produce  json
 	// @Success 200 {array} {{ModuleName}}d.{{UpperTableName}}
 	// @Failure 400 {object} ctx.R
-	// @Router /api/v1/{{ModuleName}}/{{TableName}}s [get]
-`
+	// @Router /api/v1/{{ModuleName}}/{{TableName}}s [get]`
 	}
 	rs += `
-	// {{UpperTableName}}s
 	func (u *{{UpModuleName}}) {{UpperTableName}}s(c *ctx.Context) {
 		q := qs.New().Paging(c)
 		q.SetArray(c)
@@ -226,43 +222,42 @@ func generategets() string {
 		if c.HandlerError(err) {
 			return
 		}
-		c.JSON(200, gin.H{"data": data, "totalCount": {{ModuleName}}d.{{UpperTableName}}Count(q)})
-	}`
+		c.JSON(200, gin.H{"data": data, "total": {{ModuleName}}d.{{UpperTableName}}Count(q)})
+	}
+`
 	} else {
 		rs += `
 		data, err := {{ModuleName}}d.{{UpperTableName}}s(q)
 		if c.HandlerError(err) {
 			return
 		}
-		c.JSON(200, gin.H{"data": data, "totalCount": {{ModuleName}}d.Count("{{TableName}}", q)})
-	}`
+		c.JSON(200, gin.H{"data": data, "total": {{ModuleName}}d.Count("{{TableName}}", q)})
+	}
+`
 	}
 	return rs
 }
 
 func generatesave() string {
-	rs := ""
+	rs := "// {{UpperTableName}}Save"
 	if comment {
 		rs += `
-	// {{UpperTableName}}
 	// @tags {{ModuleName}}
 	// @Summary 添加或更新{{TableName}}
 	// @Description 添加或更新{{TableName}}
 	// @Accept  x-www-form-urlencoded
 	// @Produce  json
 	// @Param document body {{ModuleName}}d.{{UpperTableName}} true "{{TableName}}信息"
-	// @Success 200 {array} ctx.R "结果"
-	// @Router /api/v1/{{ModuleName}}/{{TableName}} [post]
-	`
+	// @Success 400 {object} ctx.R
+	// @Failure 400 {object} ctx.R
+	// @Router /api/v1/{{ModuleName}}/{{TableName}} [post]`
 	}
 	rs += `
-	// {{UpperTableName}}
 	func (u *{{UpModuleName}}) {{UpperTableName}}Save(c *ctx.Context) {
 		// 获取用户id
-		userid := c.GetUID()
+		userid := c.GetAdminId()
 		var pd {{ModuleName}}d.{{UpperTableName}}
-		data := c.PostForm("data")
-		err := jsoniter.Unmarshal([]byte(data), &pd)
+		err := c.UnmarshalFromString(&pd)
 		if c.HandlerError(err) {
 			return
 		}
@@ -273,13 +268,11 @@ func generatesave() string {
 			if err != nil {
 				log.Error(err)
 			}
-			if pd.Version!=opd.Version{
-				c.HandlerError(errors.New("提交数据已被更新,请刷新后重试"))
+			if pd.Version != opd.Version {
+				c.RespError("提交数据已被更新, 请刷新后重试")
 				return
 			}
 		}
-		// 设置默认值
-		tool.SetDCM(&pd)
 		id, err := dao.InsertOrUpdate(&pd)
 		if c.HandlerError(err) {
 			return
@@ -297,32 +290,35 @@ func generatesave() string {
 		`
 	}
 	rs += `c.JSON(200, ctx.R{Status: 1, Data: id})
-	}`
+	}
+`
 	return rs
 }
 func generatedelete() string {
-	rs := ""
+	rs := "// {{UpperTableName}}Delete"
 	if comment {
 		rs += `
-	// {{UpperTableName}}
 	// @tags {{ModuleName}}
 	// @Summary 删除数据{{TableName}}
 	// @Description 删除数据{{TableName}}
 	// @Accept  json
 	// @Produce  json
 	// @Param id query string true "{{TableName}} id"
-	// @Param version query int true 
-	// @Success 200 {array} ctx.R "结果"
-	// @Router /api/{{ModuleName}}/{{TableName}} [delete]
-	`
+	// @Param version query int true  "current version"
+    // @Success 400 {object} ctx.R
+	// @Failure 400 {object} ctx.R
+	// @Router /api/{{ModuleName}}/{{TableName}} [delete]`
 	}
 	rs += `
-	// {{UpperTableName}}
 	func (u *{{UpModuleName}}) {{UpperTableName}}Delete(c *ctx.Context) {
-		id:=c.Query("id")
-		_, err := dao.Exec("UPDATE {{TableName}} SET is_delete = 1,modify_time = ?,version = version + 1 WHERE id = ? AND version = ?", tool.GetNows(), id, c.Query("version"))
-		if c.HandlerError(err) {
-			return
+		ids := strings.Split(c.Query("ids"), ",")
+		versions := strings.Split(c.Query("versions"), ",")
+		for i := range ids {
+			err := dao.Delete("{{TableName}}", ids[i], versions[i])
+			if c.HandlerError(err) {
+				return
+			}
+			_ = admins.InsertOperateRecord(2, c.GetAdminId(), "{{TableName}}", ids[i], "")
 		}
 	`
 	if cache {
@@ -333,8 +329,7 @@ func generatedelete() string {
 		`
 	}
 	rs += `
-	_ = admins.InsertOperateRecord(2, c.GetAdminId(), "{{TableName}}", id, "")
-	c.JSON(200, ctx.R{Status: 1, Data: id})
+	c.JSON(200, ctx.R{Status: 1})
 	}
 	`
 	return rs
@@ -346,7 +341,6 @@ func generaterouter() string {
 		//g.GET("/{{TableName}}", ctx.Handler(rs.{{UpperTableName}}))
 		//g.GET("/{{TableName}}s", ctx.Handler(rs.{{UpperTableName}}s))
 		//g.POST("/{{TableName}}", ctx.Handler(rs.{{UpperTableName}}Save))
-		//g.DELETE("/{{TableName}}", ctx.Handler(rs.{{UpperTableName}}Delete))
 	`
 }
 
@@ -365,7 +359,7 @@ func generateapi(tablename string) (rs string) {
 	rs += generateget()
 	rs += generategets()
 	rs += generatesave()
-	rs += generatedelete()
+	// rs += generatedelete()
 	rs += generaterouter()
 	return replace(rs, tablename)
 }
