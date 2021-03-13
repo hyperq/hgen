@@ -73,95 +73,6 @@ const daotemplate = `
 	func (b {{UpperTableName}}) TableName() string {
 		return "{{TableName}}"
 	}
-	
-	const {{UpperTableName}}sql=` + "`" + `
-			SELECT a.* 
-			FROM {{TableName}} a 
-` + "`" + `
-
-	// {{UpperTableName}}s get {{TableName}} list
-	func {{UpperTableName}}s(q *qs.QuerySet) (data []{{UpperTableName}}, err error) {
-		err = dao.QueryByQs({{UpperTableName}}sql, q,&data)
-		return
-	}
-	// {{UpperTableName}}o get {{TableName}}
-	func {{UpperTableName}}o(q *qs.QuerySet) (data {{UpperTableName}}, err error) {
-		q.ResetOther()
-		datas, err := {{UpperTableName}}s(q)
-		if err != nil {
-			return
-		}
-		if len(datas) == 0 {
-			err = dao.NotFound
-			return
-		}
-		data = datas[0]
-		return
-	}
-	// {{UpperTableName}}ById get by id
-	func {{UpperTableName}}ById(id interface{}) ({{UpperTableName}}, error) {
-		q := qs.New()
-		q.Add("a.id=?", id)
-		return {{UpperTableName}}o(q)
-	}
-	// {{UpperTableName}}sCache
-	func {{UpperTableName}}sCache(q *qs.QuerySet) (data []{{UpperTableName}}, err error) {
-		cachekey := q.FormatCache("{{TableName}}l")
-		res, err := dao.{{UpperModuleName}}Cache.Get(cachekey, q)
-		if err != nil {
-			res, err = dao.{{UpperModuleName}}Cache.Add(cachekey, dao.DefaultCacheExpire, func(q *qs.QuerySet) (res string, err error) {
-				data, err := {{UpperTableName}}s(q)
-				if err != nil {
-					return
-				}
-				res, err = jsoniter.MarshalToString(data)
-				return
-			}, q)
-			if err != nil {
-				return
-			}
-		}
-		err = jsoniter.UnmarshalFromString(res, &data)
-		return
-	}
-	// {{UpperTableName}}ByIdCache get cache by id
-	func {{UpperTableName}}ByIdCache(id interface{}) (data {{UpperTableName}}, err error) {
-		q := qs.New()
-		q.Add("a.id=?", id)
-		cachekey := "{{TableName}}d" + fmt.Sprint(id)
-		res, err := dao.{{UpperModuleName}}Cache.Get(cachekey, q)
-		if err != nil {
-			res, err = dao.{{UpperModuleName}}Cache.Add(cachekey, dao.DefaultCacheExpire, func(q *qs.QuerySet) (res string, err error) {
-				data, err := {{UpperTableName}}o(q)
-				if err != nil {
-					return
-				}
-				res, err = jsoniter.MarshalToString(data)
-				return
-			}, q)
-			if err != nil {
-				return
-			}
-		}
-		err = jsoniter.UnmarshalFromString(res, &data)
-		return
-	}
-	// {{UpperTableName}}Count count ad number by cache
-	func {{UpperTableName}}Count(q *qs.QuerySet) int {
-		countkey := q.FormatCache("{{TableName}}c")
-		counts, err := dao.{{UpperModuleName}}Cache.Get(countkey, q)
-		if err != nil {
-			counts, err = dao.{{UpperModuleName}}Cache.Add(countkey, dao.DefaultCacheExpire, func(q *qs.QuerySet) (data string, err error) {
-				data = strconv.Itoa(dao.Count("{{TableName}}", q))
-				return
-			}, q)
-			if err != nil {
-				return 0
-			}
-		}
-		count, _ := strconv.Atoi(counts)
-		return count
-	}
 `
 
 func generateget() string {
@@ -179,14 +90,16 @@ func generateget() string {
 	// @Router /api/v1/{{ModuleName}}/{{TableName}} [get]`
 	}
 	rs += `
-		func (u *{{UpModuleName}}) {{UpperTableName}}(c *ctx.Context) {`
+		func (u *{{UpModuleName}}) {{UpperTableName}}(c *ctx.Context) {
+				var data {{ModuleName}}d.{{UpperTableName}}
+	`
 	if cache {
 		rs += `	
-			data, err := {{ModuleName}}d.{{UpperTableName}}ByIdCache(c.Query("id"))
+			err := dao.FindByIDCache(c.Query("id"),&data)
 	`
 	} else {
 		rs += `	
-			data, err := {{ModuleName}}d.{{UpperTableName}}ById(c.Query("id"))
+			err := dao.FindByID(c.Query("id"),&data)
 	`
 	}
 	rs += `if c.HandlerError(err) {
@@ -215,23 +128,24 @@ func generategets() string {
 		q := qs.New().Paging(c)
 		q.SetArray(c)
 		q.SetLikeArray(c)
+		var data []{{ModuleName}}d.{{UpperTableName}}
 `
 	if cache {
 		rs += `
-		data, err := {{ModuleName}}d.{{UpperTableName}}sCache(q)
+		err := dao.FindsCache(q,&data)
 		if c.HandlerError(err) {
 			return
 		}
-		c.JSON(200, gin.H{"data": data, "total": {{ModuleName}}d.{{UpperTableName}}Count(q)})
+		c.JSON(200, gin.H{"data": data, "total": dao.CountCache("{{TableName}}", q)})
 	}
 `
 	} else {
 		rs += `
-		data, err := {{ModuleName}}d.{{UpperTableName}}s(q)
+		err := dao.Finds(q,&data)
 		if c.HandlerError(err) {
 			return
 		}
-		c.JSON(200, gin.H{"data": data, "total": {{ModuleName}}d.Count("{{TableName}}", q)})
+		c.JSON(200, gin.H{"data": data, "total":dao.CountCache("{{TableName}}", q)})
 	}
 `
 	}
@@ -264,7 +178,7 @@ func generatesave() string {
 		// 获取原来的数据
 		var opd {{ModuleName}}d.{{UpperTableName}}
 		if pd.Id != 0 {
-			opd, err = {{ModuleName}}d.{{UpperTableName}}ById(pd.Id)
+			err = dao.FindByIDCache(pd.Id,&opd)
 			if err != nil {
 				log.Error(err)
 			}
@@ -284,54 +198,12 @@ func generatesave() string {
 	if cache {
 		rs += `
 			// 清空相关缓存
-			dao.{{UpperModuleName}}Cache.FlushIndeof("{{TableName}}l")
-			dao.{{UpperModuleName}}Cache.Flush("{{TableName}}d" + strconv.Itoa(pd.Id))
-			dao.{{UpperModuleName}}Cache.Flush("{{TableName}}c")
+			dao.ClearCache("{{TableName}}",pd.Id)
 		`
 	}
 	rs += `c.JSON(200, ctx.R{Status: 1, Data: id})
 	}
 `
-	return rs
-}
-func generatedelete() string {
-	rs := "// {{UpperTableName}}Delete"
-	if comment {
-		rs += `
-	// @tags {{ModuleName}}
-	// @Summary 删除数据{{TableName}}
-	// @Description 删除数据{{TableName}}
-	// @Accept  json
-	// @Produce  json
-	// @Param id query string true "{{TableName}} id"
-	// @Param version query int true  "current version"
-    // @Success 400 {object} ctx.R
-	// @Failure 400 {object} ctx.R
-	// @Router /api/{{ModuleName}}/{{TableName}} [delete]`
-	}
-	rs += `
-	func (u *{{UpModuleName}}) {{UpperTableName}}Delete(c *ctx.Context) {
-		ids := strings.Split(c.Query("ids"), ",")
-		versions := strings.Split(c.Query("versions"), ",")
-		for i := range ids {
-			err := dao.Delete("{{TableName}}", ids[i], versions[i])
-			if c.HandlerError(err) {
-				return
-			}
-			_ = admins.InsertOperateRecord(2, c.GetAdminId(), "{{TableName}}", ids[i], "")
-		}
-	`
-	if cache {
-		rs += `
-			// 清空相关缓存
-			dao.{{UpperModuleName}}Cache.FlushIndeof("{{TableName}}l")
-			dao.{{UpperModuleName}}Cache.Flush("{{TableName}}c")
-		`
-	}
-	rs += `
-	c.JSON(200, ctx.R{Status: 1})
-	}
-	`
 	return rs
 }
 
@@ -359,7 +231,6 @@ func generateapi(tablename string) (rs string) {
 	rs += generateget()
 	rs += generategets()
 	rs += generatesave()
-	// rs += generatedelete()
 	rs += generaterouter()
 	return replace(rs, tablename)
 }

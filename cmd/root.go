@@ -37,11 +37,11 @@ var rootCmd = &cobra.Command{
 			return
 		}
 		tables := strings.Split(tablename, ",")
-		err = os.MkdirAll("hgen", 0777)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
+		// err = os.MkdirAll("hgen", 0777)
+		// if err != nil {
+		// 	fmt.Println(err)
+		// 	return
+		// }
 		for _, v := range tables {
 			os.MkdirAll("dao/"+tags+"d", 0777)
 			daofilepath := "dao/" + tags + "d/" + v + ".go"
