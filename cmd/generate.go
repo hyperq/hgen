@@ -125,9 +125,7 @@ func generategets() string {
 	}
 	rs += `
 	func (u *{{UpModuleName}}) {{UpperTableName}}s(c *ctx.Context) {
-		q := qs.New().Paging(c)
-		q.SetArray(c)
-		q.SetLikeArray(c)
+		q := qs.Auto()
 		var data []{{ModuleName}}d.{{UpperTableName}}
 `
 	if cache {
@@ -191,14 +189,13 @@ func generatesave() string {
 		if c.HandlerError(err) {
 			return
 		}
-		pd.Id = int(id)
 		// 写入操作记录
-		_ = admins.InsertOperateRecordSimple(opd, pd, userid)
+		_ = admins.InsertOperateRecordSimple(opd, pd, int(id), userid)
 	`
 	if cache {
 		rs += `
 			// 清空相关缓存
-			dao.ClearCache("{{TableName}}",pd.Id)
+			dao.ClearCache("{{TableName}}",id)
 		`
 	}
 	rs += `c.JSON(200, ctx.R{Status: 1, Data: id})
@@ -213,6 +210,9 @@ func generaterouter() string {
 		//g.GET("/{{TableName}}", ctx.Handler(rs.{{UpperTableName}}))
 		//g.GET("/{{TableName}}s", ctx.Handler(rs.{{UpperTableName}}s))
 		//g.POST("/{{TableName}}", ctx.Handler(rs.{{UpperTableName}}Save))
+		//g.GET("/{{TableName}}",commons.SetModel(reflect.TypeOf({{ModuleName}}d.{{UpperTableName}}{})), ctx.Handler(commons.Get))
+		//g.GET("/{{TableName}}s",commons.SetModel(reflect.TypeOf([]{{ModuleName}}d.{{UpperTableName}}{})), ctx.Handler(commons.Gets))
+		//g.POST("/{{TableName}}",commons.SetModel(reflect.TypeOf({{ModuleName}}d.{{UpperTableName}}{})), ctx.Handler(commons.Save))
 	`
 }
 
