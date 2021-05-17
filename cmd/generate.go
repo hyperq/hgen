@@ -125,7 +125,7 @@ func generategets() string {
 	}
 	rs += `
 	func (u *{{UpModuleName}}) {{UpperTableName}}s(c *ctx.Context) {
-		q := qs.Auto()
+		q := qs.Auto(c)
 		var data []{{ModuleName}}d.{{UpperTableName}}
 `
 	if cache {
@@ -167,7 +167,7 @@ func generatesave() string {
 	rs += `
 	func (u *{{UpModuleName}}) {{UpperTableName}}Save(c *ctx.Context) {
 		// 获取用户id
-		userid := c.GetAdminId()
+		userid := c.GetUID()
 		var pd {{ModuleName}}d.{{UpperTableName}}
 		err := c.UnmarshalFromString(&pd)
 		if c.HandlerError(err) {
@@ -175,8 +175,8 @@ func generatesave() string {
 		}
 		// 获取原来的数据
 		var opd {{ModuleName}}d.{{UpperTableName}}
-		if pd.Id != 0 {
-			err = dao.FindByIDCache(pd.Id,&opd)
+		if pd.ID != 0 {
+			err = dao.FindByIDCache(pd.ID,&opd)
 			if err != nil {
 				log.Error(err)
 			}
@@ -190,7 +190,7 @@ func generatesave() string {
 			return
 		}
 		// 写入操作记录
-		_ = admins.InsertOperateRecordSimple(opd, pd, int(id), userid)
+		_ = users.InsertOperateRecordSimple(opd, pd, int(id), userid)
 	`
 	if cache {
 		rs += `

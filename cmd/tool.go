@@ -6,6 +6,7 @@ func lintString(s string) string {
 	if s == "" {
 		return s
 	}
+	s = strings.Replace(s, "id", "ID", -1)
 	sslice := strings.Split(s, "")
 	length := len(sslice)
 	var nslice []string
