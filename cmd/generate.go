@@ -244,3 +244,78 @@ func replace(rs, tablename string) string {
 	rs = strings.Replace(rs, "{{UpModuleName}}", strings.ToUpper(tags), -1)
 	return rs
 }
+
+func generateadmin(tablename string) (rs string) {
+	rs = `import { defHttp } from '/@/utils/http/axios'
+import type { FetchParam, RespList } from '/#/axios'
+
+import { {{UpperTableName}} } from './model/{{TableName}}'
+
+export function {{TableName}}s(params: FetchParam) {
+  return defHttp.get<RespList<{{UpperTableName}}>>({
+    url: '{{TableName}}s',
+    params,
+  })
+}
+
+export function {{TableName}}(id: string | number) {
+  return defHttp.get<{{UpperTableName}}>({
+    url: '{{TableName}}/' + id,
+  })
+}
+
+export function {{TableName}}save(params: UpperTableName) {
+  return defHttp.post<{{UpperTableName}}>({
+    url: '{{TableName}}',
+	params,
+  })
+}
+`
+	rs = replace(rs, tablename)
+	return
+}
+
+func generatemodel(tablename string) (rs string) {
+	rs, _ = generateAdminStruct(tablename)
+	rs = replace(rs, tablename)
+	return
+}
+
+func generateAdminStruct(table string) (creates string, err error) {
+	rows, err := mssql.Query(fmt.Sprintf(`
+		select * from information_schema.columns
+		where table_schema = '%s'  #表所在数据库
+		and table_name = '%s' 
+	    order by ordinal_position; #你要查的表
+		`, dbname, table))
+	if err != nil {
+		return
+	}
+	var cs []columns
+	err = scanner.ScanClose(rows, &cs)
+	if err != nil {
+		return
+	}
+
+	var columns []string
+	if len(cs) == 0 {
+		err = errors.New("找不到数据")
+		return
+	}
+	for _, v := range cs {
+		ts, ok := sqltotstype[v.DATETYPE]
+		if !ok {
+			fmt.Println(v)
+			err = errors.New("暂不支持" + v.DATETYPE)
+			return
+		}
+
+		fs := fmt.Sprintf(" %s: %s", v.ColumnName, ts.TransferType)
+		if v.ColumnComment != "" {
+			fs += " // " + v.ColumnComment
+		}
+		columns = append(columns, fs)
+	}
+	creates = fmt.Sprintf("export interface {{UpperTableName}} {\n%s\n}", strings.Join(columns, "\n"))
+	return
+}

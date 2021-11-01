@@ -43,55 +43,108 @@ var rootCmd = &cobra.Command{
 		// 	return
 		// }
 		for _, v := range tables {
-			os.MkdirAll("dao/"+tags+"d", 0777)
-			daofilepath := "dao/" + tags + "d/" + v + ".go"
-			f, err := os.Create(daofilepath)
-			if err != nil {
-				fmt.Println(err)
-				return
+			if model {
+				os.MkdirAll("backend/dao/"+tags+"d", 0777)
+				daofilepath := "backend/dao/" + tags + "d/" + v + ".go"
+				f, err := os.Create(daofilepath)
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+				daostring, err := generatedao(v)
+				if err != nil {
+					fmt.Println(err)
+					f.Close()
+					os.Remove(daofilepath)
+					return
+				}
+				_, err = f.WriteString(daostring)
+				if err != nil {
+					fmt.Println(err)
+					f.Close()
+					os.Remove(daofilepath)
+					return
+				}
+				err = f.Sync()
+				if err != nil {
+					fmt.Println(err)
+					f.Close()
+					os.Remove(daostring)
+					return
+				}
 			}
-			daostring, err := generatedao(v)
-			if err != nil {
-				fmt.Println(err)
-				f.Close()
-				os.Remove(daofilepath)
-				return
+			if backend {
+				os.MkdirAll("backend/api/"+tags+"/", 0777)
+				apifilepath := "backend/api/" + tags + "/" + v + ".go"
+				f2, err := os.Create(apifilepath)
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+				apistring := generateapi(v)
+				_, err = f2.WriteString(apistring)
+				if err != nil {
+					fmt.Println(err)
+					f2.Close()
+					os.Remove(apifilepath)
+					return
+				}
+				err = f2.Sync()
+				if err != nil {
+					fmt.Println(err)
+					f2.Close()
+					os.Remove(apifilepath)
+					return
+				}
 			}
-			_, err = f.WriteString(daostring)
-			if err != nil {
-				fmt.Println(err)
-				f.Close()
-				os.Remove(daofilepath)
-				return
-			}
-			err = f.Sync()
-			if err != nil {
-				fmt.Println(err)
-				f.Close()
-				os.Remove(daostring)
-				return
-			}
-			os.MkdirAll("api/"+tags+"/", 0777)
-			apifilepath := "api/" + tags + "/" + v + ".go"
-			f2, err := os.Create(apifilepath)
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-			apistring := generateapi(v)
-			_, err = f2.WriteString(apistring)
-			if err != nil {
-				fmt.Println(err)
-				f2.Close()
-				os.Remove(apifilepath)
-				return
-			}
-			err = f2.Sync()
-			if err != nil {
-				fmt.Println(err)
-				f2.Close()
-				os.Remove(apifilepath)
-				return
+			// admin
+			if admin {
+				// api
+				os.MkdirAll("admin/src/api/"+tags+"/", 0777)
+				adminfile := "admin/src/api/" + tags + "/" + v + ".ts"
+				f3, err := os.Create(adminfile)
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+				apistring := generateadmin(v)
+				_, err = f3.WriteString(apistring)
+				if err != nil {
+					fmt.Println(err)
+					f3.Close()
+					os.Remove(adminfile)
+					return
+				}
+				err = f3.Sync()
+				if err != nil {
+					fmt.Println(err)
+					f3.Close()
+					os.Remove(adminfile)
+					return
+				}
+				//module
+				os.MkdirAll("admin/src/api/"+tags+"/model/", 0777)
+				adminmodel := "admin/src/api/" + tags + "/model/" + v + ".ts"
+				f4, err := os.Create(adminmodel)
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+				apimodelstring := generatemodel(v)
+				_, err = f4.WriteString(apimodelstring)
+				if err != nil {
+					fmt.Println(err)
+					f4.Close()
+					os.Remove(adminmodel)
+					return
+				}
+				err = f4.Sync()
+				if err != nil {
+					fmt.Println(err)
+					f4.Close()
+					os.Remove(adminmodel)
+					return
+				}
 			}
 		}
 	},
@@ -117,9 +170,13 @@ var (
 	tags      string
 	comment   bool
 	cache     bool
+	admin     bool
+	backend   bool
+	model     bool
 )
 
 func init() {
+	initConfig()
 	rootCmd.PersistentFlags().IntVar(&port, "port", 3306, "mysql port")
 	rootCmd.PersistentFlags().StringVarP(&username, "username", "u", "root", "mysql username")
 	rootCmd.PersistentFlags().StringVarP(&password, "password", "p", "123456ab", "mysql password")
@@ -129,6 +186,9 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&tags, "tags", "g", "", "tags")
 	rootCmd.PersistentFlags().BoolVarP(&comment, "comment", "c", false, "swagger comment")
 	rootCmd.PersistentFlags().BoolVarP(&cache, "cache", "e", false, "is cache")
+	rootCmd.PersistentFlags().BoolVarP(&admin, "admin", "a", false, "is admin")
+	rootCmd.PersistentFlags().BoolVarP(&backend, "backend", "b", false, "is backend")
+	rootCmd.PersistentFlags().BoolVarP(&model, "model", "m", false, "dao model")
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -137,7 +197,7 @@ func initConfig() {
 		viper.SetConfigFile(cfgFile)
 	} else {
 		viper.AddConfigPath(".")
-		viper.SetConfigName("config.yaml")
+		viper.SetConfigName("hgen.yaml")
 	}
 	viper.SetConfigType("yaml")
 	viper.AutomaticEnv() // read in environment variables that match
