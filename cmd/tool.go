@@ -1,6 +1,10 @@
 package cmd
 
-import "strings"
+import (
+	"fmt"
+	"os"
+	"strings"
+)
 
 func lintString(s string) string {
 	if s == "" {
@@ -21,4 +25,35 @@ func lintString(s string) string {
 		}
 	}
 	return strings.Join(nslice, "")
+}
+
+func WriteFile(dirpath, filename, s string) (err error) {
+	err = os.MkdirAll(dirpath, 0777)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	filepath := dirpath + "/" + filename
+	f, err := os.Create(filepath)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer func(f *os.File) {
+		err := f.Close()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}(f)
+	_, err = f.WriteString(s)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	err = f.Sync()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	return
 }

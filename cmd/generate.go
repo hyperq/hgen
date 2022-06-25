@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/hyperq/hgen/cmd/template"
 	"strings"
 
 	"github.com/didi/gendry/scanner"
@@ -19,13 +20,37 @@ type columns struct {
 	ColumnKey     string `ddb:"COLUMN_KEY"`
 }
 
-func generateStruct(table string) (creates string, err error) {
-	rows, err := mssql.Query(fmt.Sprintf(`
-		select * from information_schema.columns
-		where table_schema = '%s'  #表所在数据库
-		and table_name = '%s' 
-	    order by ordinal_position; #你要查的表
-		`, dbname, table))
+type tables struct {
+	TableComment string `ddb:"Table_COMMENT"`
+}
+
+// 生成替换的变量
+func generateVar() {
+	UpperTableName = lintString(TableName)
+	if TagName == TableName {
+		OneTableName = "One"
+		ListTableName = "List"
+		SaveTableName = "Save"
+	} else {
+		t2 := strings.Trim(strings.Trim(TableName, TagName), "_")
+		OneTableName = lintString(t2)
+		ListTableName = OneTableName + "s"
+		SaveTableName = OneTableName + "Save"
+	}
+}
+
+func generateStruct() (err error) {
+	// 获取 TableColumns
+	rows, err := mssql.Query(
+		fmt.Sprintf(
+			`
+		SELECT * FROM information_schema.columns
+		WHERE table_schema = '%s'  #表所在数据库
+		AND table_name = '%s' 
+	    ORDER BY ordinal_position; #你要查的表
+		`, dbname, TableName,
+		),
+	)
 	if err != nil {
 		return
 	}
@@ -56,238 +81,79 @@ func generateStruct(table string) (creates string, err error) {
 			cn += ";pk"
 		}
 
-		fs := fmt.Sprintf("%s %s `gorm:\"%s\" json:\"%s\" default:\"%s\"`", lintString(v.ColumnName), ts.TransferType, cn,
-			v.ColumnName, cf)
+		fs := fmt.Sprintf(
+			"%s %s `gorm:\"%s\" json:\"%s\" default:\"%s\"`", lintString(v.ColumnName), ts.TransferType, cn,
+			v.ColumnName, cf,
+		)
 		if v.ColumnComment != "" {
 			fs += " // " + v.ColumnComment
 		}
 		columns = append(columns, fs)
 	}
-	creates = "package " + tags + "d\n"
-	creates += fmt.Sprintf("// {{UpperTableName}} %s struct\ntype {{UpperTableName}} struct{\n%s\n}", table, strings.Join(columns, "\n"))
-	return
-}
-
-const daotemplate = `
-	// TableName sets the insert table name for this struct type
-	func (b {{UpperTableName}}) TableName() string {
-		return "{{TableName}}"
-	}
-`
-
-func generateget() string {
-	rs := "// {{UpperTableName}}"
-	if comment {
-		rs += `
-	// @tags {{ModuleName}}
-	// @Summary 根据id获取{{TableName}}信息
-	// @Description 根据id获取{{TableName}}信息
-	// @Accept  json
-	// @Produce  json
-	// @Param id query string true "{{TableName}} id"
-	// @Success 200 {object} {{ModuleName}}d.{{UpperTableName}}
-	// @Failure 400 {object} ctx.R
-	// @Router /api/v1/{{ModuleName}}/{{TableName}} [get]`
-	}
-	rs += `
-		func (u *{{UpModuleName}}) {{UpperTableName}}(c *ctx.Context) {
-				var data {{ModuleName}}d.{{UpperTableName}}
-	`
-	if cache {
-		rs += `	
-			err := dao.FindByIDCache(c.Query("id"),&data)
-	`
-	} else {
-		rs += `	
-			err := dao.FindByID(c.Query("id"),&data)
-	`
-	}
-	rs += `if c.HandlerError(err) {
-				return
-			}
-			c.JSON(200, data)
-		}
-`
-	return rs
-}
-func generategets() string {
-	rs := "// {{UpperTableName}}s"
-	if comment {
-		rs += `
-	// @tags {{ModuleName}}
-	// @Summary 获取{{TableName}}列表
-	// @Description 获取{{TableName}}列表
-	// @Accept  json
-	// @Produce  json
-	// @Success 200 {array} {{ModuleName}}d.{{UpperTableName}}
-	// @Failure 400 {object} ctx.R
-	// @Router /api/v1/{{ModuleName}}/{{TableName}}s [get]`
-	}
-	rs += `
-	func (u *{{UpModuleName}}) {{UpperTableName}}s(c *ctx.Context) {
-		q := qs.Auto(c)
-		var data []{{ModuleName}}d.{{UpperTableName}}
-`
-	if cache {
-		rs += `
-		err := dao.FindsCache(q,&data)
-		if c.HandlerError(err) {
-			return
-		}
-		c.JSON(200, gin.H{"data": data, "total": dao.CountCache("{{TableName}}", q)})
-	}
-`
-	} else {
-		rs += `
-		err := dao.Finds(q,&data)
-		if c.HandlerError(err) {
-			return
-		}
-		c.JSON(200, gin.H{"data": data, "total":dao.CountCache("{{TableName}}", q)})
-	}
-`
-	}
-	return rs
-}
-
-func generatesave() string {
-	rs := "// {{UpperTableName}}Save"
-	if comment {
-		rs += `
-	// @tags {{ModuleName}}
-	// @Summary 添加或更新{{TableName}}
-	// @Description 添加或更新{{TableName}}
-	// @Accept  x-www-form-urlencoded
-	// @Produce  json
-	// @Param document body {{ModuleName}}d.{{UpperTableName}} true "{{TableName}}信息"
-	// @Success 400 {object} ctx.R
-	// @Failure 400 {object} ctx.R
-	// @Router /api/v1/{{ModuleName}}/{{TableName}} [post]`
-	}
-	rs += `
-	func (u *{{UpModuleName}}) {{UpperTableName}}Save(c *ctx.Context) {
-		// 获取用户id
-		userid := c.GetUID()
-		var pd {{ModuleName}}d.{{UpperTableName}}
-		err := c.UnmarshalFromString(&pd)
-		if c.HandlerError(err) {
-			return
-		}
-		// 获取原来的数据
-		var opd {{ModuleName}}d.{{UpperTableName}}
-		if pd.ID != 0 {
-			err = dao.FindByIDCache(pd.ID,&opd)
-			if err != nil {
-				log.Error(err)
-			}
-			if pd.Version != opd.Version {
-				c.RespError("提交数据已被更新, 请刷新后重试")
-				return
-			}
-		}
-		id, err := dao.InsertOrUpdate(&pd)
-		if c.HandlerError(err) {
-			return
-		}
-		// 写入操作记录
-		_ = users.InsertOperateRecordSimple(opd, pd, int(id), userid)
-	`
-	if cache {
-		rs += `
-			// 清空相关缓存
-			dao.ClearCache("{{TableName}}",id)
-		`
-	}
-	rs += `c.JSON(200, ctx.R{Status: 1, Data: id})
-	}
-`
-	return rs
-}
-
-func generaterouter() string {
-	return `
-		// {{TableName}}
-		//g.GET("/{{TableName}}", ctx.Handler(rs.{{UpperTableName}}))
-		//g.GET("/{{TableName}}s", ctx.Handler(rs.{{UpperTableName}}s))
-		//g.POST("/{{TableName}}", ctx.Handler(rs.{{UpperTableName}}Save))
-		//g.GET("/{{TableName}}",commons.SetModel(reflect.TypeOf({{ModuleName}}d.{{UpperTableName}}{})), ctx.Handler(commons.Get))
-		//g.GET("/{{TableName}}s",commons.SetModel(reflect.TypeOf([]{{ModuleName}}d.{{UpperTableName}}{})), ctx.Handler(commons.Gets))
-		//g.POST("/{{TableName}}",commons.SetModel(reflect.TypeOf({{ModuleName}}d.{{UpperTableName}}{})), ctx.Handler(commons.Save))
-	`
-}
-
-func generatedao(tablename string) (rs string, err error) {
-	rs, err = generateStruct(tablename)
+	TableColumns = strings.Join(columns, "\n")
+	// 获取 TableComment
+	rows2, err := mssql.Query(
+		fmt.Sprintf(
+			`
+		SELECT * FROM information_schema.tables 
+		WHERE table_schema = '%s'  #表所在数据库
+		AND table_name = '%s'
+		`, dbname, TableName,
+		),
+	)
 	if err != nil {
 		return
 	}
-	rs += daotemplate
-	rs = replace(rs, tablename)
+	var tn tables
+	err = scanner.ScanClose(rows2, &tn)
+	if err != nil {
+		return
+	}
+	TableComment = tn.TableComment
 	return
 }
 
-func generateapi(tablename string) (rs string) {
-	rs = "package " + tags + "\n"
-	rs += generateget()
-	rs += generategets()
-	rs += generatesave()
-	rs += generaterouter()
-	return replace(rs, tablename)
+func generateModel() (rs string, err error) {
+	err = generateStruct()
+	if err != nil {
+		return
+	}
+	rs = replace(template.ModelString)
+	return
 }
-func replace(rs, tablename string) string {
-	upperModuleName := lintString(tags)
-	upperTableName := lintString(tablename)
-	rs = strings.Replace(rs, "{{ModuleName}}", tags, -1)
-	rs = strings.Replace(rs, "{{UpperModuleName}}", upperModuleName, -1)
-	rs = strings.Replace(rs, "{{TableName}}", tablename, -1)
-	rs = strings.Replace(rs, "{{UpperTableName}}", upperTableName, -1)
-	rs = strings.Replace(rs, "{{UpModuleName}}", strings.ToUpper(tags), -1)
+
+func generateApi() (rs string) {
+	return replace(template.ApiString)
+}
+func replace(rs string) string {
+	rs = strings.Replace(rs, "{{TagName}}", TagName, -1)
+	rs = strings.Replace(rs, "{{UpperTableName}}", UpperTableName, -1)
+	rs = strings.Replace(rs, "{{TableName}}", TableName, -1)
+	rs = strings.Replace(rs, "{{OneTableName}}", OneTableName, -1)
+	rs = strings.Replace(rs, "{{ListTableName}}", ListTableName, -1)
+	rs = strings.Replace(rs, "{{SaveTableName}}", SaveTableName, -1)
+	rs = strings.Replace(rs, "{{TableComment}}", TableComment, -1)
+	rs = strings.Replace(rs, "{{TableColumns}}", TableColumns, -1)
+	rs = strings.Replace(rs, "{{VueModel}}", VueModel, -1)
 	return rs
 }
 
-func generateadmin(tablename string) (rs string) {
-	rs = `import { defHttp } from '/@/utils/http/axios'
-import type { FetchParam, RespList } from '/#/axios'
-
-import { {{UpperTableName}} } from './model/{{TableName}}'
-
-export function {{TableName}}s(params: FetchParam) {
-  return defHttp.get<RespList<{{UpperTableName}}>>({
-    url: '{{TableName}}s',
-    params,
-  })
-}
-
-export function {{TableName}}(id: string | number) {
-  return defHttp.get<{{UpperTableName}}>({
-    url: '{{TableName}}/' + id,
-  })
-}
-
-export function {{TableName}}save(params: UpperTableName) {
-  return defHttp.post<{{UpperTableName}}>({
-    url: '{{TableName}}',
-	params,
-  })
-}
-`
-	rs = replace(rs, tablename)
+func generateAdminApi() (rs string) {
+	rs = replace(template.VueApiString)
 	return
 }
 
-func generatemodel(tablename string) (rs string) {
-	rs, _ = generateAdminStruct(tablename)
-	rs = replace(rs, tablename)
-	return
-}
-
-func generateAdminStruct(table string) (creates string, err error) {
-	rows, err := mssql.Query(fmt.Sprintf(`
+func generateAdminStruct() (rs string, err error) {
+	rows, err := mssql.Query(
+		fmt.Sprintf(
+			`
 		select * from information_schema.columns
 		where table_schema = '%s'  #表所在数据库
 		and table_name = '%s' 
 	    order by ordinal_position; #你要查的表
-		`, dbname, table))
+		`, dbname, TableName,
+		),
+	)
 	if err != nil {
 		return
 	}
@@ -316,6 +182,7 @@ func generateAdminStruct(table string) (creates string, err error) {
 		}
 		columns = append(columns, fs)
 	}
-	creates = fmt.Sprintf("export interface {{UpperTableName}} {\n%s\n}", strings.Join(columns, "\n"))
+	VueModel = strings.Join(columns, "\n")
+	rs = replace(template.VueModelString)
 	return
 }
