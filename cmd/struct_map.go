@@ -5,158 +5,511 @@ type columnType struct {
 	TransferInsert func(string) string
 }
 
-var sqltogotype = map[string]columnType{
-	"tinyint": columnType{
-		TransferType: "int",
+var Sql2GoType = map[string]columnType{
+	"tinyint": {
+		TransferType: "bool",
 	},
-	"smallint": columnType{
-		TransferType: "int",
-	},
-	"mediumint": columnType{
-		TransferType: "int",
-	},
-	"int": columnType{
-		TransferType: "int",
-	},
-	"integer": columnType{
-		TransferType: "int",
-	},
-	"bigint": columnType{
+	"smallint": {
 		TransferType: "int64",
 	},
-	"float": columnType{
+	"mediumint": {
+		TransferType: "int64",
+	},
+	"int": {
+		TransferType: "int64",
+	},
+	"integer": {
+		TransferType: "int64",
+	},
+	"bigint": {
+		TransferType: "int64",
+	},
+	"float": {
 		TransferType: "float64",
 	},
-	"double": columnType{
+	"double": {
 		TransferType: "float64",
 	},
-	"decimal": columnType{
+	"decimal": {
 		TransferType: "float64",
 	},
-	"date": columnType{
+	"date": {
 		TransferType: "time.Time",
 	},
-	"time": columnType{
+	"time": {
 		TransferType: "string",
 	},
-	"year": columnType{
+	"year": {
 		TransferType: "int",
 	},
-	"datetime": columnType{
+	"datetime": {
 		TransferType: "time.Time",
 	},
-	"timestamp": columnType{
+	"timestamp": {
 		TransferType: "int",
 	},
-	"datetimeoffset": columnType{
+	"datetimeoffset": {
 		TransferType: "datetime",
 	},
-	"char": columnType{
+	"char": {
 		TransferType: "string",
 	},
-	"varchar": columnType{
+	"varchar": {
 		TransferType: "string",
 	},
-	"tinyblob": columnType{
+	"tinyblob": {
 		TransferType: "string",
 	},
-	"tinytext": columnType{
+	"tinytext": {
 		TransferType: "string",
 	},
-	"blob": columnType{
+	"blob": {
 		TransferType: "string",
 	},
-	"text": columnType{
+	"text": {
 		TransferType: "string",
 	},
-	"mediumblob": columnType{
+	"mediumblob": {
 		TransferType: "string",
 	},
-	"mediumtext": columnType{
+	"mediumtext": {
 		TransferType: "string",
 	},
-	"longblob": columnType{
+	"longblob": {
 		TransferType: "string",
 	},
-	"longtext": columnType{
+	"longtext": {
 		TransferType: "string",
 	},
 }
 
-var sqltotstype = map[string]columnType{
-	"tinyint": columnType{
+var Sql2TsType = map[string]columnType{
+	"tinyint": {
+		TransferType: "boolean",
+	},
+	"smallint": {
 		TransferType: "number",
 	},
-	"smallint": columnType{
+	"mediumint": {
 		TransferType: "number",
 	},
-	"mediumint": columnType{
+	"int": {
 		TransferType: "number",
 	},
-	"int": columnType{
+	"integer": {
 		TransferType: "number",
 	},
-	"integer": columnType{
+	"bigint": {
 		TransferType: "number",
 	},
-	"bigint": columnType{
+	"float": {
 		TransferType: "number",
 	},
-	"float": columnType{
+	"double": {
 		TransferType: "number",
 	},
-	"double": columnType{
+	"decimal": {
 		TransferType: "number",
 	},
-	"decimal": columnType{
+	"date": {
+		TransferType: "string",
+	},
+	"time": {
+		TransferType: "string",
+	},
+	"year": {
 		TransferType: "number",
 	},
-	"date": columnType{
+	"datetime": {
 		TransferType: "string",
 	},
-	"time": columnType{
-		TransferType: "string",
-	},
-	"year": columnType{
+	"timestamp": {
 		TransferType: "number",
 	},
-	"datetime": columnType{
+	"datetimeoffset": {
 		TransferType: "string",
 	},
-	"timestamp": columnType{
-		TransferType: "number",
-	},
-	"datetimeoffset": columnType{
+	"char": {
 		TransferType: "string",
 	},
-	"char": columnType{
+	"varchar": {
 		TransferType: "string",
 	},
-	"varchar": columnType{
+	"tinyblob": {
 		TransferType: "string",
 	},
-	"tinyblob": columnType{
+	"tinytext": {
 		TransferType: "string",
 	},
-	"tinytext": columnType{
+	"blob": {
 		TransferType: "string",
 	},
-	"blob": columnType{
+	"text": {
 		TransferType: "string",
 	},
-	"text": columnType{
+	"mediumblob": {
 		TransferType: "string",
 	},
-	"mediumblob": columnType{
+	"mediumtext": {
 		TransferType: "string",
 	},
-	"mediumtext": columnType{
+	"longblob": {
 		TransferType: "string",
 	},
-	"longblob": columnType{
-		TransferType: "string",
-	},
-	"longtext": columnType{
+	"longtext": {
 		TransferType: "string",
 	},
 }
+
+var Sql2VueFormType = map[string]columnType{
+	"tinyint": {
+		TransferType: `
+		{
+			field: '{{field}}',
+			label: '{{label}}',
+			component: 'RadioButtonGroup',
+			componentProps: {
+				options: [
+					{ label: '是', value: true },
+					{ label: '否', value: false },
+				],
+			},
+		}
+		`,
+	},
+	"smallint": {
+		TransferType: `
+		{
+			field: '{{field}}',
+			label: '{{label}}',
+			component: 'InputNumber',
+			componentProps: () => {
+				return {
+					min: 0,
+					precision: 0,
+				};
+			},
+			rules: [{ required: false }],
+		}`,
+	},
+	"mediumint": {
+		TransferType: `
+		{
+			field: '{{field}}',
+			label: '{{label}}',
+			component: 'InputNumber',
+			componentProps: () => {
+				return {
+					min: 0,
+					precision: 0,
+				};
+			},
+			rules: [{ required: false }],
+		}`,
+	},
+	"int": {
+		TransferType: `
+		{
+			field: '{{field}}',
+			label: '{{label}}',
+			component: 'InputNumber',
+			componentProps: () => {
+				return {
+					min: 0,
+					precision: 0,
+				};
+			},
+			rules: [{ required: false }],
+		}`,
+	},
+	"integer": {
+		TransferType: `
+		{
+			field: '{{field}}',
+			label: '{{label}}',
+			component: 'InputNumber',
+			componentProps: () => {
+				return {
+					min: 0,
+					precision: 0,
+				};
+			},
+			rules: [{ required: false }],
+		}`,
+	},
+	"bigint": {
+		TransferType: `
+		{
+			field: '{{field}}',
+			label: '{{label}}',
+			component: 'InputNumber',
+			componentProps: () => {
+				return {
+					min: 0,
+					precision: 0,
+				};
+			},
+			rules: [{ required: false }],
+		}`,
+	},
+	"float": {
+		TransferType: `
+		{
+			field: '{{field}}',
+			label: '{{label}}',
+			component: 'InputNumber',
+			componentProps: () => {
+				return {
+					min: 0,
+					precision: 2,
+				};
+			},
+			rules: [{ required: false }],
+		}`,
+	},
+	"double": {
+		TransferType: `
+		{
+			field: '{{field}}',
+			label: '{{label}}',
+			component: 'InputNumber',
+			componentProps: () => {
+				return {
+					min: 0,
+					precision: 2,
+				};
+			},
+			rules: [{ required: false }],
+		}`,
+	},
+	"decimal": {
+		TransferType: `
+		{
+			field: '{{field}}',
+			label: '{{label}}',
+			component: 'InputNumber',
+			componentProps: () => {
+				return {
+					min: 0,
+					precision: 2,
+				};
+			},
+			rules: [{ required: false }],
+		}`,
+	},
+	"date": {
+		TransferType: `
+		{
+			field: '{{field}}',
+			label: '{{label}}',
+			component: 'Input',
+			rules: [{ required: false }],
+		}`,
+	},
+	"time": {
+		TransferType: `
+		{
+			field: '{{field}}',
+			label: '{{label}}',
+			component: 'Input',
+			rules: [{ required: false }],
+		}`,
+	},
+	"year": {
+		TransferType: `
+		{
+			field: '{{field}}',
+			label: '{{label}}',
+			component: 'InputNumber',
+			componentProps: () => {
+				return {
+					min: 0,
+					precision: 2,
+				};
+			},
+			rules: [{ required: false }],
+		}`,
+	},
+	"datetime": {
+		TransferType: `
+		{
+			field: '{{field}}',
+			label: '{{label}}',
+			component: 'Input',
+			rules: [{ required: false }],
+		}`,
+	},
+	"timestamp": {
+		TransferType: `
+		{
+			field: '{{field}}',
+			label: '{{label}}',
+			component: 'InputNumber',
+			componentProps: () => {
+				return {
+					min: 0,
+					precision: 2,
+				};
+			},
+			rules: [{ required: false }],
+		}`,
+	},
+	"datetimeoffset": {
+		TransferType: `
+		{
+			field: '{{field}}',
+			label: '{{label}}',
+			component: 'Input',
+			rules: [{ required: false }],
+		}`,
+	},
+	"char": {
+		TransferType: `
+		{
+			field: '{{field}}',
+			label: '{{label}}',
+			component: 'Input',
+			rules: [{ required: false }],
+		}`,
+	},
+	"varchar": {
+		TransferType: `
+		{
+			field: '{{field}}',
+			label: '{{label}}',
+			component: 'InputTextArea',
+			componentProps: {
+				autoSize: true,
+			},
+			rules: [{ required: false }],
+		}`,
+	},
+	"tinyblob": {
+		TransferType: `
+		{
+			field: '{{field}}',
+			label: '{{label}}',
+			component: 'InputTextArea',
+			componentProps: {
+				autoSize: true,
+			},
+			rules: [{ required: false }],
+		}`,
+	},
+	"tinytext": {
+		TransferType: `
+		{
+			field: '{{field}}',
+			label: '{{label}}',
+			component: 'InputTextArea',
+			componentProps: {
+				autoSize: true,
+			},
+			rules: [{ required: false }],
+		}`,
+	},
+	"blob": {
+		TransferType: `
+		{
+			field: '{{field}}',
+			label: '{{label}}',
+			component: 'InputTextArea',
+			componentProps: {
+				autoSize: true,
+			},
+			rules: [{ required: false }],
+		}`,
+	},
+	"text": {
+		TransferType: `
+		{
+			field: '{{field}}',
+			label: '{{label}}',
+			component: 'InputTextArea',
+			componentProps: {
+				autoSize: true,
+			},
+			rules: [{ required: false }],
+		}`,
+	},
+	"mediumblob": {
+		TransferType: `
+		{
+			field: '{{field}}',
+			label: '{{label}}',
+			component: 'InputTextArea',
+			componentProps: {
+				autoSize: true,
+			},
+			rules: [{ required: false }],
+		}`,
+	},
+	"mediumtext": {
+		TransferType: `
+		{
+			field: '{{field}}',
+			label: '{{label}}',
+			component: 'InputTextArea',
+			componentProps: {
+				autoSize: true,
+			},
+			rules: [{ required: false }],
+		}`,
+	},
+	"longblob": {
+		TransferType: `
+		{
+			field: '{{field}}',
+			label: '{{label}}',
+			component: 'InputTextArea',
+			componentProps: {
+				autoSize: true,
+			},
+			rules: [{ required: false }],
+		}`,
+	},
+	"longtext": {
+		TransferType: `
+		{
+			field: '{{field}}',
+			label: '{{label}}',
+			component: 'InputTextArea',
+			componentProps: {
+				autoSize: true,
+			},
+			rules: [{ required: false }],
+		}`,
+	},
+}
+
+const VueFormTransID = `
+{
+	field: '{{field}}',
+	label: '{{label}}',
+	component: 'ApiSelect',
+    componentProps: () => {
+        return {
+			api: .list,
+			params: { current: -1 },
+			resultField: 'data',
+			labelField: 'name',
+			valueField: 'id',
+        };
+    },
+    rules: [{ required: true, type: 'number' }],
+}
+`
+const VueFormTransTime = `
+{
+	field: '{{field}}',
+	label: '{{label}}',
+	component: 'DatePickerTs',
+	componentProps: () => {
+		return {
+			format: 'YYYY-MM-DD HH:mm:ss',
+			showTime: {},
+        };
+    },
+    rules: [{ required: true, type: 'number' }],
+}
+`

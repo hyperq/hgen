@@ -6,6 +6,15 @@ import (
 	"strings"
 )
 
+func replace(rs string) string {
+	rs = strings.Replace(rs, "{{UpperTableName}}", UpperTableName, -1)
+	rs = strings.Replace(rs, "{{TableName}}", TableName, -1)
+	rs = strings.Replace(rs, "{{TableComment}}", TableComment, -1)
+	rs = strings.Replace(rs, "{{TableColumns}}", GoStructs, -1)
+	rs = strings.Replace(rs, "{{TsInterfaces}}", TsInterfaces, -1)
+	return rs
+}
+
 func lintString(s string) string {
 	if s == "" {
 		return s
