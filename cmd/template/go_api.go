@@ -3,9 +3,6 @@ package template
 const ApiString = `
 package {{TableName}}
 
-import (
-	"backend/model"
-)
 // func {{UpperTableName}}(c *ctx.Context) {
 // 	q := qs.New("a.id=?", c.Param("id"))
 // 	q.JoinSelect = []string{}

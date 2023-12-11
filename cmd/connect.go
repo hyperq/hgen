@@ -9,6 +9,10 @@ import (
 
 // NewMysql new db
 func NewMysql() (msdb *sql.DB, err error) {
-	msdb, err = sql.Open("mysql", fmt.Sprintf(Dsn, DbName))
+	dsn := fmt.Sprintf(Dsn, DbName)
+	msdb, err = sql.Open("mysql", dsn)
+	if err != nil {
+		fmt.Println(err)
+	}
 	return
 }

@@ -11,6 +11,7 @@ require (
 )
 
 require (
+	github.com/davecgh/go-spew v1.1.1
 	github.com/fsnotify/fsnotify v1.4.7 // indirect
 	github.com/go-sql-driver/mysql v1.4.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect

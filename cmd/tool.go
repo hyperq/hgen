@@ -12,6 +12,9 @@ func replace(rs string) string {
 	rs = strings.Replace(rs, "{{TableComment}}", TableComment, -1)
 	rs = strings.Replace(rs, "{{TableColumns}}", GoStructs, -1)
 	rs = strings.Replace(rs, "{{TsInterfaces}}", TsInterfaces, -1)
+	rs = strings.Replace(rs, "{{TagName}}", TagName, -1)
+	rs = strings.Replace(rs, "{{VueBasicColumns}}", VueBasicColumns, -1)
+	rs = strings.Replace(rs, "{{VueForms}}", VueForms, -1)
 	return rs
 }
 

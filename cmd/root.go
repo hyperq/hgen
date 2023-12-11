@@ -32,6 +32,12 @@ var rootCmd = &cobra.Command{
 			return
 		}
 
+		err = generate()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
 		// 写入model文件
 		if IsApi {
 			// api
@@ -109,10 +115,10 @@ var (
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().StringVarP(&Dsn, "DSN", "l", "root:123456ab@tcp(127.0.0.1:3306)%s?charset=utf8mb4&parseTime=True&loc=Local", "mysql dsn")
+	rootCmd.PersistentFlags().StringVarP(&Dsn, "dsn", "l", "root:123456ab@tcp(127.0.0.1:3306)/%s?charset=utf8mb4&parseTime=True&loc=Local", "mysql dsn")
 	rootCmd.PersistentFlags().StringVarP(&DbName, "dbname", "d", "", "dbname")
 	rootCmd.PersistentFlags().StringVarP(&TableName, "tablename", "t", "", "table name")
-	rootCmd.PersistentFlags().StringVarP(&TableName, "TagName", "g", "", "tag name")
+	rootCmd.PersistentFlags().StringVarP(&TagName, "tagname", "g", "", "tag name")
 	rootCmd.PersistentFlags().BoolVarP(&IsApi, "api", "a", false, "is api")
 	rootCmd.PersistentFlags().BoolVarP(&IsWeb, "web", "w", false, "is web")
 }

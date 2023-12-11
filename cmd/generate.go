@@ -69,5 +69,6 @@ func generate() (err error) {
 		return
 	}
 	TableComment = tn.TableComment
+	UpperTableName = lintString(TableName)
 	return
 }

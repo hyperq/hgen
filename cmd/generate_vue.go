@@ -63,8 +63,8 @@ func generateVueModel() (rs string, err error) {
 		if strings.Contains(v.ColumnKey, "_time") {
 			formkeys = VueFormTransTime
 		}
-		formkeys = strings.Replace(formkeys, "{{field}}", v.ColumnKey, -1)
-		formkeys = strings.Replace(formkeys, "{{label}}", v.ColumnName, -1)
+		formkeys = strings.Replace(formkeys, "{{field}}", v.ColumnName, -1)
+		formkeys = strings.Replace(formkeys, "{{label}}", v.ColumnComment, -1)
 		columns = append(columns, formkeys)
 		//
 		tablekeys := `
@@ -87,8 +87,8 @@ func generateVueModel() (rs string, err error) {
 			},
 			`
 		}
-		tablekeys = strings.Replace(tablekeys, "{{field}}", v.ColumnKey, -1)
-		tablekeys = strings.Replace(tablekeys, "{{label}}", v.ColumnName, -1)
+		tablekeys = strings.Replace(tablekeys, "{{field}}", v.ColumnName, -1)
+		tablekeys = strings.Replace(tablekeys, "{{label}}", v.ColumnComment, -1)
 		columns2 = append(columns2, tablekeys)
 	}
 	VueForms = strings.Join(columns, ",")
