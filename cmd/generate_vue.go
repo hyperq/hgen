@@ -57,10 +57,10 @@ func generateVueModel() (rs string, err error) {
 			return
 		}
 		formkeys := formts.TransferType
-		if strings.Contains(v.ColumnKey, "_id") {
+		if strings.Contains(v.ColumnName, "_id") {
 			formkeys = VueFormTransID
 		}
-		if strings.Contains(v.ColumnKey, "_time") {
+		if strings.Contains(v.ColumnName, "_time") {
 			formkeys = VueFormTransTime
 		}
 		formkeys = strings.Replace(formkeys, "{{field}}", v.ColumnName, -1)
@@ -74,7 +74,7 @@ func generateVueModel() (rs string, err error) {
 			width: 100,
 		},
 		`
-		if strings.Contains(v.ColumnKey, "_time") {
+		if strings.Contains(v.ColumnName, "_time") {
 			tablekeys = `
 			{
 				title: '{{label}}',
