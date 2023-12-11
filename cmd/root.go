@@ -108,7 +108,7 @@ var (
 )
 
 func init() {
-	initConfig()
+	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentFlags().StringVarP(&Dsn, "DSN", "l", "root:123456ab@tcp(127.0.0.1:3306)%s?charset=utf8mb4&parseTime=True&loc=Local", "mysql dsn")
 	rootCmd.PersistentFlags().StringVarP(&DbName, "dbname", "d", "", "dbname")
 	rootCmd.PersistentFlags().StringVarP(&TableName, "tablename", "t", "", "table name")
@@ -123,9 +123,9 @@ func initConfig() {
 		viper.SetConfigFile(cfgFile)
 	} else {
 		viper.AddConfigPath(".")
+		viper.SetConfigType("yaml")
 		viper.SetConfigName("hgen.yaml")
 	}
-	viper.SetConfigType("yaml")
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.
