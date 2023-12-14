@@ -1,7 +1,7 @@
 package template
 
 const ApiString = `
-package {{TableName}}
+package {{TagName}}
 
 // func {{UpperTableName}}(c *ctx.Context) {
 // 	q := qs.New("a.id=?", c.Param("id"))
