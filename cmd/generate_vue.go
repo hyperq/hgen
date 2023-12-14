@@ -72,7 +72,7 @@ func generateVueModel() (rs string, err error) {
 			title: '{{label}}',
 			dataIndex: '{{field}}',
 			width: 100,
-		},
+		}
 		`
 		if strings.Contains(v.ColumnName, "_time") {
 			tablekeys = `
@@ -84,7 +84,7 @@ func generateVueModel() (rs string, err error) {
 					return ts2dt(text);
 				},
 				width: 160,
-			},
+			}
 			`
 		}
 		tablekeys = strings.Replace(tablekeys, "{{field}}", v.ColumnName, -1)
