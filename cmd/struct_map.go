@@ -497,8 +497,7 @@ const VueFormTransID = `
         };
     },
     rules: [{ required: true, type: 'number' }],
-}
-`
+}`
 const VueFormTransTime = `
 {
 	field: '{{field}}',
@@ -511,5 +510,4 @@ const VueFormTransTime = `
         };
     },
     rules: [{ required: true, type: 'number' }],
-}
-`
+}`

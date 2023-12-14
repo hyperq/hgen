@@ -85,7 +85,7 @@ var rootCmd = &cobra.Command{
 				fmt.Println(err)
 				return
 			}
-			err = WriteFile("web/admin/src/views/"+TagName+"/"+TableName+"/model", "_list.ts", vuemodels)
+			err = WriteFile("web/admin/src/views/"+TagName+"/"+TableName+"/model", "_list.tsx", vuemodels)
 			if err != nil {
 				fmt.Println(err)
 				return
